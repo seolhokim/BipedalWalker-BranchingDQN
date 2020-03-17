@@ -37,10 +37,17 @@ class QNetwork(nn.Module):
     def __init__(self,image_width,image_height,action_x_dim,action_y_dim):
         super(QNetwork,self).__init__()
         #customize
-        self.encoder = nn.Conv2d(3,64,1, stride= 1 , padding = 0)
+        self.encoder = nn.Sequential(
+                            nn.Conv2d(3,32,3, stride= 1 , padding = 1),
+                            nn.LeLU(),
+                            nn.Conv2d(32,64,5, stride= 1 , padding = 2),
+                            nn.ReLU(),
+                            nn.Conv2d(32,1,1, stride= 1 , padding = 0),
+                            nn.LeLU()
+                            )
+        
         
         self.value = nn.Sequential(
-                            nn.LeLU(),
                             nn.Linear(image_width * image_height,1024),
                             nn.ReLU(),
                             nn.Linear(1024,128),
@@ -48,7 +55,6 @@ class QNetwork(nn.Module):
                             nn.Linear(64,1)
                             )
         self.action_x = nn.Sequential(
-                            nn.LeLU(),
                             nn.Linear(image_width * image_height,1024),
                             nn.ReLU(),
                             nn.Linear(1024,128),
@@ -56,7 +62,6 @@ class QNetwork(nn.Module):
                             nn.Linear(64,action_x_dim)
                             )
         self.action_y = nn.Sequential(
-                            nn.LeLU(),
                             nn.Linear(image_width * image_height,1024),
                             nn.ReLU(),
                             nn.Linear(1024,128),
