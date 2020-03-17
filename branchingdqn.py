@@ -95,8 +95,12 @@ class BQN(nn.Module):
         for param, target_param in zip(self.q.parameters(), self.target_q.parameters()):
             target_param.data.copy_(param.data)
         
-        self.optimizer = optim.Adam(self.q.parameters(),lr = learning_rate)
-
+        self.optimizer = optim.Adam([\
+                                    {'params' : self.q.encoder.parameters(),'lr': learning_rate / 3},\
+                                    {'params' : self.q.value.parameters(), 'lr' : learning_rate},\
+                                    {'params' : self.q.action_x.parameters(), 'lr' : learning_rate},\
+                                    {'params' : self.q.action_y.parameters(), 'lr' : learning_rate}],\
+                                    lr = learning_rate)
     def action(self,x):
         return self.q(x)
     
