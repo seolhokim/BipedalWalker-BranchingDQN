@@ -75,11 +75,11 @@ class QNetwork(nn.Module):
         value = self.value(encoding)
         
         action_x = self.action_x(encoding)
-        action_x = action_x - action_x.max(-1)[0].reshape(-1,1) #.detach()
+        action_x = action_x - action_x.max(-1)[0].reshape(-1,1).detach()
         action_x = action_x + value
         
         action_y = self.action_y(encoding)
-        action_y = action_y - action_y.max(-1)[0].reshape(-1,1) #.detach()
+        action_y = action_y - action_y.max(-1)[0].reshape(-1,1).detach()
         action_y = action_y + value
         
         return action_x, action_y
