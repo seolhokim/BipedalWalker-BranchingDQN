@@ -11,6 +11,5 @@ https://stackoverflow.com/questions/44198228/install-pybox2d-for-python-3-6-with
 
 * No abstraction
 * Using pytorch
-* Assume Only Two different action dimension branch
-* Assume Image data input
 * Not used Prioritized Experience Replay(Easy but it will be harder to read)
+* Not used Double DQN(Easy but it will be harder to read)
