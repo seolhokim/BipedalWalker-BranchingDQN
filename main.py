@@ -36,7 +36,7 @@ class ReplayBuffer():
     
     def size(self):
         return len(self.buffer)
-    
+
 class QNetwork(nn.Module):
     def __init__(self,state_space : int, action_num : int,action_scale : int):
         super(QNetwork,self).__init__()
@@ -61,14 +61,12 @@ class QNetwork(nn.Module):
         x = F.relu(self.linear_1(x))
         encoded = F.relu(self.linear_2(x))
         actions = [x(encoded) for x in self.actions]
-        
         value = self.value(encoded)
         for i in range(len(actions)):
             actions[i] = actions[i] - actions[i].max().reshape(-1,1).detach()
             actions[i] += value
         
         return actions
-
 
 class BQN(nn.Module):
     def __init__(self,state_space : int, action_num : int,action_scale : int):
@@ -83,7 +81,7 @@ class BQN(nn.Module):
         self.optimizer = optim.Adam([\
                                     {'params' : self.q.linear_1.parameters(),'lr': learning_rate / (action_num+2)},\
                                     {'params' : self.q.linear_2.parameters(),'lr': learning_rate / (action_num+2)},\
-                                    {'params' : self.q.value.parameters(), 'lr' : learning_rate},\
+                                    {'params' : self.q.value.parameters(), 'lr' : learning_rate/ (action_num+2)},\
                                     {'params' : self.q.actions.parameters(), 'lr' : learning_rate},\
                                     ],\
                                     lr = learning_rate)
@@ -110,6 +108,7 @@ class BQN(nn.Module):
         loss.backward()
         self.optimizer.step()
         return loss
+
 import gym
 env = gym.make("BipedalWalker-v3")
 
@@ -131,7 +130,6 @@ else :
 memory = ReplayBuffer(100000,action_space)
 
 for n_epi in range(2000):
-    
     state = env.reset()
     done = False
     time_step = 0
@@ -155,6 +153,6 @@ for n_epi in range(2000):
         state = next_state
         time_step += 1
     time.sleep(1)
+    if n_epi %100 == 0 :
+        agent.target_q.load_state_dict(agent.q.state_dict())
     print("epi : ",n_epi,", score : ",score)
-    
-    
