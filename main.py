@@ -46,20 +46,20 @@ class QNetwork(nn.Module):
     def __init__(self,state_space : int, action_num : int,action_scale : int):
         super(QNetwork,self).__init__()
         #customize
-        self.linear_1 = nn.Linear(state_space,state_space*2)
-        self.linear_2 = nn.Linear(state_space*2,state_space*2)
+        self.linear_1 = nn.Linear(state_space,state_space*20)
+        self.linear_2 = nn.Linear(state_space*20,state_space*10)
         
         #self.self_attention = nn.MultiheadAttention(encodding_dim,head_num)
-        self.actions = [nn.Sequential(nn.Linear(state_space*2,state_space),
+        self.actions = [nn.Sequential(nn.Linear(state_space*10,state_space*5),
               nn.ReLU(),
-              nn.Linear(state_space,action_scale)
+              nn.Linear(state_space*5,action_scale)
               ) for _ in range(action_num)]
 
         self.actions = nn.ModuleList(self.actions)
 
-        self.value = nn.Sequential(nn.Linear(state_space*2,state_space*1),
+        self.value = nn.Sequential(nn.Linear(state_space*10,state_space*5),
               nn.ReLU(),
-              nn.Linear(state_space,1)
+              nn.Linear(state_space*5,1)
               )
         
     def forward(self,x):
@@ -68,9 +68,8 @@ class QNetwork(nn.Module):
         actions = [x(encoded) for x in self.actions]
         value = self.value(encoded)
         for i in range(len(actions)):
-            actions[i] = actions[i] - actions[i].max().reshape(-1,1).detach()
+            actions[i] = actions[i] - actions[i].max().reshape(-1,1) #.detach()
             actions[i] += value
-        
         return actions
 
 class BQN(nn.Module):
@@ -79,10 +78,8 @@ class BQN(nn.Module):
 
         self.q = QNetwork(state_space, action_num,action_scale).to(device)
         self.target_q = QNetwork(state_space, action_num,action_scale).to(device)
+        self.target_q.load_state_dict(self.q.state_dict())
         
-        for param, target_param in zip(self.q.parameters(), self.target_q.parameters()):
-            target_param.data.copy_(param.data)
-
         self.optimizer = optim.Adam([\
                                     {'params' : self.q.linear_1.parameters(),'lr': learning_rate / (action_num+2)},\
                                     {'params' : self.q.linear_2.parameters(),'lr': learning_rate / (action_num+2)},\
@@ -99,24 +96,23 @@ class BQN(nn.Module):
         done_mask = torch.abs(done_mask-1)
         
         cur_actions = self.q(state)
-        cur_actions = [x.reshape(batch_size,-1) for x in cur_actions]
         cur_actions = [x.gather(1,actions[idx].reshape(-1,1).long()) for idx, x in enumerate(cur_actions)]
         
         target_cur_actions = self.target_q(next_state)
-        
         target_action_max_q = [x.max(-1)[0].reshape(batch_size,1) for x in target_cur_actions]
-        
         target_action = [reward + done_mask * gamma * x for x in target_action_max_q]
+        
         loss = [F.smooth_l1_loss(cur_actions[idx], target_action[idx].detach()) for idx in range(len(cur_actions))]
+
         if use_tensorboard:
             for idx in range(len(cur_actions)):
                 writer.add_scalar("Loss/action_"+str(idx), loss[idx], n_epi)
-        loss = sum(loss)
+        
+        loss= torch.stack(loss).mean()
         self.optimizer.zero_grad()
         loss.backward()
         self.optimizer.step()
         return loss
-
 
 import gym
 env = gym.make("BipedalWalker-v3")
@@ -130,7 +126,7 @@ print(env.action_space.low, env.action_space.high)
 action_scale = 20.
 learning_rate = 0.001
 batch_size = 64
-gamma = 0.98
+gamma = 0.99
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
 if device == 'cuda':
     agent = BQN(state_space,action_space,int(action_scale)).cuda()
@@ -156,7 +152,7 @@ for n_epi in range(2000):
         if time_step == 1000: 
             done = True
         done = 0 if done == False else 1
-        memory.put((state,action,reward,next_state, done))
+        memory.put((state,action,reward/10.,next_state, done))
         if memory.size()>2000:
             agent.train_mode(n_epi)
         state = next_state
