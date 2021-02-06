@@ -8,6 +8,11 @@ import collections
 import time
 import random
 
+use_tensorboard = True
+if use_tensorboard : 
+    from torch.utils.tensorboard import SummaryWriter
+    writer = SummaryWriter()
+    
 class ReplayBuffer():
     def __init__(self,buffer_limit,action_space):
         self.buffer = collections.deque(maxlen=buffer_limit)
@@ -88,7 +93,7 @@ class BQN(nn.Module):
     def action(self,x):
         return self.q(x)
     
-    def train_mode(self):
+    def train_mode(self,n_epi):
         state, actions, reward, next_state, done_mask = memory.sample(batch_size)
         
         done_mask = torch.abs(done_mask-1)
@@ -103,11 +108,15 @@ class BQN(nn.Module):
         
         target_action = [reward + done_mask * gamma * x for x in target_action_max_q]
         loss = [F.smooth_l1_loss(cur_actions[idx], target_action[idx].detach()) for idx in range(len(cur_actions))]
+        if use_tensorboard:
+            for idx in range(len(cur_actions)):
+                writer.add_scalar("Loss/action_"+str(idx), loss[idx], n_epi)
         loss = sum(loss)
         self.optimizer.zero_grad()
         loss.backward()
         self.optimizer.step()
         return loss
+
 
 import gym
 env = gym.make("BipedalWalker-v3")
@@ -149,9 +158,12 @@ for n_epi in range(2000):
         done = 0 if done == False else 1
         memory.put((state,action,reward,next_state, done))
         if memory.size()>2000:
-            agent.train_mode()
+            agent.train_mode(n_epi)
         state = next_state
         time_step += 1
+        if use_tensorboard:
+            writer.add_scalar("reward", score, n_epi)
+
     time.sleep(1)
     if n_epi %100 == 0 :
         agent.target_q.load_state_dict(agent.q.state_dict())
