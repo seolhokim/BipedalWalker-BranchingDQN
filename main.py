@@ -147,7 +147,7 @@ for n_epi in range(2000):
         else:
             action_prob = agent.action(torch.tensor(env.observation_space.sample()).to(device))
             action = [int(x.max(1)[1]) for x in action_prob]
-        next_state, reward, done, info = env.step(np.array([float((x+1)/action_scale)-1 for x in action]))
+        next_state, reward, done, info = env.step(np.array([float((x+1)/(action_scale/2))-1 for x in action]))
         score += reward
         if time_step == 1000: 
             done = True
