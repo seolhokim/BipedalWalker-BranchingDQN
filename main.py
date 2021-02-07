@@ -101,13 +101,12 @@ class BQN(nn.Module):
         target_action_max_q = [x.max(-1)[0].reshape(batch_size,1) for x in target_cur_actions]
         target_action = [reward + done_mask * gamma * x for x in target_action_max_q]
         
-        loss = [F.smooth_l1_loss(cur_actions[idx], target_action[idx].detach()) for idx in range(len(cur_actions))]
-
+        loss = [(cur_actions[idx]- target_action[idx])**2 for idx in range(len(cur_actions))]
         if use_tensorboard:
             for idx in range(len(cur_actions)):
                 writer.add_scalar("Loss/action_"+str(idx), loss[idx], n_epi)
         
-        loss= torch.stack(loss).mean()
+        loss = torch.stack(loss).sum(0).mean()
         self.optimizer.zero_grad()
         loss.backward()
         self.optimizer.step()
