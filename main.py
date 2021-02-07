@@ -52,6 +52,7 @@ class QNetwork(nn.Module):
               nn.ReLU(),
               nn.Linear(state_space*5,action_scale)
               ) for _ in range(action_num)]
+
         self.actions = nn.ModuleList(self.actions)
 
         self.value = nn.Sequential(nn.Linear(state_space*10,state_space*5),
@@ -65,7 +66,7 @@ class QNetwork(nn.Module):
         actions = [x(encoded) for x in self.actions]
         value = self.value(encoded)
         for i in range(len(actions)):
-            actions[i] = actions[i] - actions[i].max(-1)[0].reshape(-1,1) #.detach()
+            actions[i] = actions[i] - actions[i].max(-1)[0].reshape(-1,1)
             actions[i] += value
         return actions
 
@@ -76,13 +77,15 @@ class BQN(nn.Module):
         self.q = QNetwork(state_space, action_num,action_scale).to(device)
         self.target_q = QNetwork(state_space, action_num,action_scale).to(device)
         self.target_q.load_state_dict(self.q.state_dict())
-        
+
         self.optimizer = optim.Adam([\
                                     {'params' : self.q.linear_1.parameters(),'lr': learning_rate / (action_num+2)},\
                                     {'params' : self.q.linear_2.parameters(),'lr': learning_rate / (action_num+2)},\
                                     {'params' : self.q.value.parameters(), 'lr' : learning_rate/ (action_num+2)},\
                                     {'params' : self.q.actions.parameters(), 'lr' : learning_rate},\
                                     ])
+        self.update_freq = 1000
+        self.update_count = 0
     def action(self,x):
         return self.q(x)
     
@@ -108,6 +111,10 @@ class BQN(nn.Module):
         self.optimizer.zero_grad()
         loss.backward()
         self.optimizer.step()
+        self.update_count += 1
+        if (self.update_count % self.update_freq = 0) and (self.update_count > 0):
+            self.update_count = 0
+            self.target_q.load_state_dict(self.q.state_dict())
         return loss
 
 import gym
@@ -138,7 +145,7 @@ for n_epi in range(2000):
     score = 0.0
     while not done:
         #env.render()
-        epsilon = max(0.05, 0.3 - 0.01*(n_epi/200))
+        epsilon = max(0.01, 0.3 - 0.01*(n_epi/200))
         if epsilon > random.random():
             action = random.sample(range(0,int(action_scale)),4)
         else:
@@ -146,11 +153,9 @@ for n_epi in range(2000):
             action = [int(x.max(1)[1]) for x in action_prob]
         next_state, reward, done, info = env.step(np.array([real_action[x] for x in action]))
         score += reward
-        if time_step == 1000: 
-            done = True
         done = 0 if done == False else 1
         memory.put((state,action,reward,next_state, done))
-        if memory.size()>2000:
+        if memory.size()>5000:
             agent.train_mode(n_epi)
         state = next_state
         time_step += 1
@@ -158,6 +163,4 @@ for n_epi in range(2000):
             writer.add_scalar("reward", score, n_epi)
 
     time.sleep(1)
-    if n_epi %30 == 0 :
-        agent.target_q.load_state_dict(agent.q.state_dict())
     print("epi : ",n_epi,", score : ",score)
