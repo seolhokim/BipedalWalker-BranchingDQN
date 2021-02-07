@@ -119,16 +119,17 @@ print('observation space : ', env.observation_space)
 print('action space : ', env.action_space)
 print(env.action_space.low, env.action_space.high)
 
-action_scale = 20.
+action_scale = 6
 learning_rate = 0.001
 batch_size = 64
 gamma = 0.99
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
 if device == 'cuda':
-    agent = BQN(state_space,action_space,int(action_scale)).cuda()
+    agent = BQN(state_space,action_space,(action_scale)).cuda()
 else : 
-    agent = BQN(state_space,action_space,int(action_scale))
+    agent = BQN(state_space,action_space,(action_scale))
 memory = ReplayBuffer(100000,action_space)
+real_action = np.linspace(-1.,1., action_scale)
 
 for n_epi in range(2000):
     state = env.reset()
@@ -143,12 +144,12 @@ for n_epi in range(2000):
         else:
             action_prob = agent.action(torch.tensor(env.observation_space.sample()).to(device))
             action = [int(x.max(1)[1]) for x in action_prob]
-        next_state, reward, done, info = env.step(np.array([float((x+1)/(action_scale/2))-1 for x in action]))
+        next_state, reward, done, info = env.step(np.array([real_action[x] for x in action]))
         score += reward
         if time_step == 1000: 
             done = True
         done = 0 if done == False else 1
-        memory.put((state,action,reward/10.,next_state, done))
+        memory.put((state,action,reward,next_state, done))
         if memory.size()>2000:
             agent.train_mode(n_epi)
         state = next_state
@@ -157,6 +158,6 @@ for n_epi in range(2000):
             writer.add_scalar("reward", score, n_epi)
 
     time.sleep(1)
-    if n_epi %100 == 0 :
+    if n_epi %30 == 0 :
         agent.target_q.load_state_dict(agent.q.state_dict())
     print("epi : ",n_epi,", score : ",score)
