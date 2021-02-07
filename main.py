@@ -45,16 +45,13 @@ class ReplayBuffer():
 class QNetwork(nn.Module):
     def __init__(self,state_space : int, action_num : int,action_scale : int):
         super(QNetwork,self).__init__()
-        #customize
         self.linear_1 = nn.Linear(state_space,state_space*20)
         self.linear_2 = nn.Linear(state_space*20,state_space*10)
         
-        #self.self_attention = nn.MultiheadAttention(encodding_dim,head_num)
         self.actions = [nn.Sequential(nn.Linear(state_space*10,state_space*5),
               nn.ReLU(),
               nn.Linear(state_space*5,action_scale)
               ) for _ in range(action_num)]
-
         self.actions = nn.ModuleList(self.actions)
 
         self.value = nn.Sequential(nn.Linear(state_space*10,state_space*5),
