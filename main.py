@@ -85,8 +85,7 @@ class BQN(nn.Module):
                                     {'params' : self.q.linear_2.parameters(),'lr': learning_rate / (action_num+2)},\
                                     {'params' : self.q.value.parameters(), 'lr' : learning_rate/ (action_num+2)},\
                                     {'params' : self.q.actions.parameters(), 'lr' : learning_rate},\
-                                    ],\
-                                    lr = learning_rate)
+                                    ])
     def action(self,x):
         return self.q(x)
     
