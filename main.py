@@ -68,7 +68,7 @@ class QNetwork(nn.Module):
         actions = [x(encoded) for x in self.actions]
         value = self.value(encoded)
         for i in range(len(actions)):
-            actions[i] = actions[i] - actions[i].max().reshape(-1,1) #.detach()
+            actions[i] = actions[i] - actions[i].max(-1)[0].reshape(-1,1) #.detach()
             actions[i] += value
         return actions
 
