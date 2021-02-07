@@ -112,7 +112,7 @@ class BQN(nn.Module):
         loss.backward()
         self.optimizer.step()
         self.update_count += 1
-        if (self.update_count % self.update_freq = 0) and (self.update_count > 0):
+        if (self.update_count % self.update_freq == 0) and (self.update_count > 0):
             self.update_count = 0
             self.target_q.load_state_dict(self.q.state_dict())
         return loss
