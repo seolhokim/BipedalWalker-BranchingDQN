@@ -26,26 +26,29 @@ class BQN(nn.Module):
     
     def train_mode(self,n_epi,memory,batch_size,gamma,use_tensorboard,writer):
         state, actions, reward, next_state, done_mask = memory.sample(batch_size)
-
+        actions = torch.stack(actions).transpose(0,1).unsqueeze(-1)
         done_mask = torch.abs(done_mask-1)
-
+        
         cur_actions = self.q(state)
-        cur_actions = [x.gather(1,actions[idx].reshape(-1,1).long()) for idx, x in enumerate(cur_actions)]
+        cur_actions = torch.stack(cur_actions).transpose(0,1)
+        cur_actions = cur_actions.gather(2,actions.long()).squeeze(-1)
 
         target_cur_actions = self.target_q(next_state)
-        target_action_max_q = [x.max(-1)[0].reshape(batch_size,1) for x in target_cur_actions]
-        target_action = [reward + done_mask * gamma * x for x in target_action_max_q]
+        target_cur_actions = torch.stack(target_cur_actions).transpose(0,1)
+        target_cur_actions = target_cur_actions.max(-1,keepdim = True)[0]
+        target_action = (done_mask * gamma * target_cur_actions.mean(1) + reward)
+        
+        loss = F.mse_loss(cur_actions,target_action.repeat(1,4))
 
-        target_action = torch.stack(target_action).mean(0).repeat(1,4)
-        cur_actions = torch.stack(cur_actions).transpose(0,1).squeeze(-1)
-        loss = F.mse_loss(cur_actions, target_action)
-        if use_tensorboard:
-            writer.add_scalar("Loss/loss", loss, n_epi)
         self.optimizer.zero_grad()
         loss.backward()
         self.optimizer.step()
+        
         self.update_count += 1
         if (self.update_count % self.update_freq == 0) and (self.update_count > 0):
             self.update_count = 0
             self.target_q.load_state_dict(self.q.state_dict())
+            
+        if use_tensorboard:
+            writer.add_scalar("Loss/loss", loss, n_epi)
         return loss
