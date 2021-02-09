@@ -102,9 +102,11 @@ class BQN(nn.Module):
         target_action = [reward + done_mask * gamma * x for x in target_action_max_q]
         
         loss = [(cur_actions[idx]- target_action[idx])**2 for idx in range(len(cur_actions))]
+        
         if use_tensorboard:
+            loss_print = torch.stack(loss).squeeze(-1).sum(-1)
             for idx in range(len(cur_actions)):
-                writer.add_scalar("Loss/action_"+str(idx), loss[idx], n_epi)
+                writer.add_scalar("Loss/action_"+str(idx), loss_print[idx], n_epi)
         
         loss = torch.stack(loss).sum(0).mean()
         self.optimizer.zero_grad()
@@ -126,7 +128,7 @@ print('action space : ', env.action_space)
 print(env.action_space.low, env.action_space.high)
 
 action_scale = 6
-learning_rate = 0.001
+learning_rate = 0.0001
 batch_size = 64
 gamma = 0.99
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
@@ -146,11 +148,12 @@ for n_epi in range(2000):
         #env.render()
         epsilon = max(0.01, 0.3 - 0.01*(n_epi/200))
         if epsilon > random.random():
-            action = random.sample(range(0,int(action_scale)),4)
+            action = random.sample(range(0,(action_scale)),4)
         else:
-            action_prob = agent.action(torch.tensor(env.observation_space.sample()).to(device))
+            action_prob = agent.action(torch.tensor(state).float().reshape(1,-1).to(device))
             action = [int(x.max(1)[1]) for x in action_prob]
         next_state, reward, done, info = env.step(np.array([real_action[x] for x in action]))
+        
         score += reward
         done = 0 if done == False else 1
         memory.put((state,action,reward,next_state, done))
@@ -158,8 +161,8 @@ for n_epi in range(2000):
             agent.train_mode(n_epi)
         state = next_state
         time_step += 1
-        if use_tensorboard:
-            writer.add_scalar("reward", score, n_epi)
+    if use_tensorboard:
+        writer.add_scalar("reward", score, n_epi)
 
-    time.sleep(1)
+    #time.sleep(1)
     print("epi : ",n_epi,", score : ",score)
