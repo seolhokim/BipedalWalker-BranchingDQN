@@ -93,22 +93,22 @@ class BQN(nn.Module):
         state, actions, reward, next_state, done_mask = memory.sample(batch_size)
         
         done_mask = torch.abs(done_mask-1)
-        
-        cur_actions = self.q(state)
-        cur_actions = [x.gather(1,actions[idx].reshape(-1,1).long()) for idx, x in enumerate(cur_actions)]
-        
-        target_cur_actions = self.target_q(next_state)
-        target_action_max_q = [x.max(-1)[0].reshape(batch_size,1) for x in target_cur_actions]
-        target_action = [reward + done_mask * gamma * x for x in target_action_max_q]
-        
-        loss = [(cur_actions[idx]- target_action[idx])**2 for idx in range(len(cur_actions))]
-        
+
+        actions = torch.stack(actions).transpose(0,1).unsqueeze(-1)
+        qvals = agent.action(state)
+        qvals = torch.stack(qvals)
+        qvals = qvals.transpose(0,1)
+        current_qvals = qvals.gather(2,actions.long()).squeeze(-1)
+        with torch.no_grad():
+            target_cur_actions = agent.target_q(next_state)
+            target_cur_actions = torch.stack(target_cur_actions).transpose(0,1)
+            target_cur_actions = target_cur_actions.max(-1)[0]
+            target_cur_actions = target_cur_actions.mean(1,keepdim = True)
+            expected_q_vals = reward + done_mask * gamma *target_cur_actions
+        loss = F.mse_loss(expected_q_vals.repeat(1,4), current_qvals)
         if use_tensorboard:
-            loss_print = torch.stack(loss).squeeze(-1).sum(-1)
-            for idx in range(len(cur_actions)):
-                writer.add_scalar("Loss/action_"+str(idx), loss_print[idx], n_epi)
-        
-        loss = torch.stack(loss).sum(0).mean()
+            writer.add_scalar("Loss/loss", loss, n_epi)
+                
         self.optimizer.zero_grad()
         loss.backward()
         self.optimizer.step()
@@ -117,6 +117,7 @@ class BQN(nn.Module):
             self.update_count = 0
             self.target_q.load_state_dict(self.q.state_dict())
         return loss
+
 
 import gym
 env = gym.make("BipedalWalker-v3")
