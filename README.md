@@ -24,7 +24,7 @@ python main.py
   - "--load", type=str, default = 'no', help = 'load network name in ./model_weights'
   - "--save_interval", type=int, default = 100, help = 'save interval(default: 100)'
   - "--print_interval", type=int, default = 1, help = 'print interval(default : 1)'
-## install BipedalWalker
+## Install BipedalWalker
 
 ### Ubuntu
 ```
