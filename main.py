@@ -34,7 +34,6 @@ action_scale = args.action_scale
 learning_rate = args.lr_rate
 batch_size = args.batch_size
 gamma = args.gamma
-action_scale = args.action_scale
 
 if use_tensorboard : 
     from torch.utils.tensorboard import SummaryWriter
