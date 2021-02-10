@@ -1,6 +1,5 @@
 <left><img src="https://github.com/seolhokim/BipedalWalker-BranchingDQN/blob/master/assets/video.gif" width="250" height="200"></left>
 <left><img src="https://github.com/seolhokim/BipedalWalker-BranchingDQN/blob/master/assets/score.PNG" width="250" height="200"></left>
-<left><img src="https://github.com/seolhokim/BipedalWalker-BranchingDQN/blob/master/assets/loss.PNG" width="250" height="200"></left>
 # BipedalWalker
 Branching DQN implemetation with pytorch in BipedalWalker environment. No PER, No DDQN version to make it easier for you to understand the point.
 
